@@ -22,6 +22,7 @@ enum Board {
     Bottom,
     Left,
     Right,
+    None,
 }
 enum Side {
     Enemy,
@@ -83,13 +84,13 @@ impl Pad {
     pub fn update(&mut self, speed:f32, direction:f32)
     {
             
-        if self.check_wall() {
-            self.position.y = self.position.y;
+        // if self.check_wall() {
+        //     self.position.y = self.position.y;
             
-        }
-        else {
+        // }
+        // else {
             self.position.y += direction * speed;
-        }
+        // }
         
     }
 }
@@ -97,11 +98,14 @@ impl Pad {
 impl Collision for Pad {
     fn check_wall(&self) -> Board {
         if self.position.y <= 5.0 {
-            Board::Top
+            return Board::Top
         }
-        if self.position.y >= screen_height() - (self.size.height + 5.0)
-        {
-            Board::Bottom
+        else
+        if self.position.y >= screen_height() - (self.size.height + 5.0) {
+            return Board::Bottom
+        }
+        else {
+            return Board::None
         }
     }
 }
@@ -128,26 +132,47 @@ impl Pong {
     pub fn draw(&self) {
         draw_circle(self.position.x, self.position.y, self.radius, self.color)
     }
-    pub fn update(&self){
-
+    pub fn update(&mut self, player: &Pad, enemy: &Pad){
+        match self.check_wall() {
+            Board::Bottom | Board::Top => self.velocity.1 = -self.velocity.1,
+            Board::Left | Board::Right => self.velocity.0 = -self.velocity.0,
+            _ => {},
+        }
+        if self.check_pads(player) || self.check_pads(enemy)
+        {
+            println!("hit pad");
+            self.velocity.0 = -self.velocity.0;
+        }
+        self.position.x += self.velocity.0;
+        self.position.y += self.velocity.1;
+    }
+    fn check_pads(&self, pad:&Pad) -> bool {
+        ((self.position.x >= pad.position.x - self.radius && self.position.x <= pad.position.x + pad.size.width + self.radius)) &&
+        (self.position.y > pad.position.y && self.position.y < pad.position.y + pad.size.height)
     }
 }
 
 impl Collision for Pong {
     fn check_wall(&self) -> Board {
-        if self.position.y < 5.0
+        if (self.position.y < 10.0)
         {
-            Board::Top
+            return Board::Top
         }
-        if self.position.y >= screen_height() - (self.radius + 5.0) {
-            Board::Bottom
+        else
+        if (self.position.y >= screen_height() - (self.radius - 10.0)) {
+            return Board::Bottom
         }
-        if self.position.x < 5.0 {
-            Board::Left
+        else
+        if (self.position.x < 10.0) {
+            return Board::Left
         }
-        if self.position.x > screen_width() - (self.radius + 5.0)
+        else
+        if (self.position.x > screen_width() - (self.radius - 10.0))
         {
-            Board::Right
+            return Board::Right
+        }
+        else {
+            return Board::None
         }
     }
 
@@ -173,7 +198,8 @@ async fn main() {
         
         clear_background(BLACK);
         pad.update(speed, direction);
-        enemy.update(speed, 1.0);
+        enemy.update(speed, 0.0);
+        pong.update(&pad,&enemy);
         
         //draw_grid(20, 20.0, GREEN, YELLOW);
         // draw_grid_2d();
